@@ -28,6 +28,27 @@ const recencyWeight = (playedAt: string) => {
 
 const rankingDelta = (home: Team, away: Team) => away.fifaRank - home.fifaRank;
 
+const estimatedFifaPoints = (team: Team) => team.fifaPoints ?? clamp(1820 - team.fifaRank * 7.2, 900, 1900);
+
+const matchupEdge = (home: Team, away: Team) => {
+  const pointsEdge = clamp((estimatedFifaPoints(home) - estimatedFifaPoints(away)) / 560, -0.58, 0.58);
+  const rankEdge = Math.tanh(rankingDelta(home, away) / 42) * 0.38;
+
+  return pointsEdge * 0.68 + rankEdge * 0.32;
+};
+
+const teamProfile = (team: Team) => {
+  const points = estimatedFifaPoints(team);
+  const quality = clamp((points - 1500) / 520, -0.45, 0.55);
+  const eliteBonus = team.fifaRank <= 10 ? 0.08 : team.fifaRank <= 25 ? 0.04 : 0;
+  const lowRankPenalty = team.fifaRank >= 70 ? -0.08 : team.fifaRank >= 50 ? -0.04 : 0;
+
+  return {
+    attack: clamp(quality * 0.22 + eliteBonus + lowRankPenalty, -0.18, 0.28),
+    defense: clamp(quality * 0.18 + eliteBonus * 0.6 + lowRankPenalty * 0.5, -0.15, 0.22)
+  };
+};
+
 const buildStrengths = (matches: MatchResult[]) => {
   const raw = new Map<string, { scored: number; conceded: number; weight: number; games: number }>();
 
@@ -115,16 +136,32 @@ export function predictScore(homeTeam: Team, awayTeam: Team, historicalMatches: 
   const strengths = buildStrengths(historicalMatches);
   const homeStrength = strengths.get(homeTeam.id) ?? { attack: 0, defense: 0, games: 0 };
   const awayStrength = strengths.get(awayTeam.id) ?? { attack: 0, defense: 0, games: 0 };
-  const rankEdge = clamp(rankingDelta(homeTeam, awayTeam) * 0.018, -0.5, 0.5);
+  const homeProfile = teamProfile(homeTeam);
+  const awayProfile = teamProfile(awayTeam);
+  const edge = matchupEdge(homeTeam, awayTeam);
   const similar = similarGoalAdjustment(homeTeam, awayTeam, historicalMatches);
 
   const expectedHomeGoals = clamp(
-    BASE_WORLD_CUP_GOALS + HOME_EDGE + rankEdge + homeStrength.attack - awayStrength.defense + similar.home,
+    BASE_WORLD_CUP_GOALS +
+      HOME_EDGE +
+      edge +
+      homeProfile.attack -
+      awayProfile.defense +
+      homeStrength.attack -
+      awayStrength.defense +
+      similar.home,
     0.25,
     3.4
   );
   const expectedAwayGoals = clamp(
-    BASE_WORLD_CUP_GOALS - HOME_EDGE - rankEdge + awayStrength.attack - homeStrength.defense + similar.away,
+    BASE_WORLD_CUP_GOALS -
+      HOME_EDGE -
+      edge +
+      awayProfile.attack -
+      homeProfile.defense +
+      awayStrength.attack -
+      homeStrength.defense +
+      similar.away,
     0.25,
     3.4
   );
@@ -155,9 +192,9 @@ export function predictScore(homeTeam: Team, awayTeam: Team, historicalMatches: 
     confidence,
     sampleSize,
     modelNotes: [
-      "Modelo Poisson con ajuste por ranking FIFA.",
+      "Modelo Poisson con ajuste por puntos y ranking FIFA.",
       "La muestra comparable usa partidos con diferencia de ranking parecida y más peso para partidos recientes.",
-      "Cuando Neon esté conectado, el demo se reemplaza por resultados históricos importados."
+      "Los puntos FIFA evitan que partidos con favoritos de distinta fuerza terminen con la misma expectativa."
     ]
   };
 }

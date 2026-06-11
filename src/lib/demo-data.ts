@@ -22,7 +22,7 @@ export const demoTeams: Team[] = [
   { id: "can", fifaId: "43843", name: "Canada", countryCode: "CAN", fifaRank: 30, fifaPoints: 1556.48, confederation: "CONCACAF" },
   { id: "civ", fifaId: "43854", name: "Côte d'Ivoire", countryCode: "CIV", fifaRank: 34, fifaPoints: 1532.98, confederation: "CAF" },
   { id: "swe", fifaId: "43970", name: "Sweden", countryCode: "SWE", fifaRank: 38, fifaPoints: 1514.77, confederation: "UEFA" },
-  { id: "par", fifaId: "43962", name: "Paraguay", countryCode: "PAR", fifaRank: 40, fifaPoints: 1503.5, confederation: "CONMEBOL" },
+  { id: "par", fifaId: "43962", name: "Paraguay", countryCode: "PAR", fifaRank: 41, fifaPoints: 1505.35, confederation: "CONMEBOL" },
   { id: "cze", fifaId: "43934", name: "Czechia", countryCode: "CZE", fifaRank: 41, fifaPoints: 1501.38, confederation: "UEFA" },
   { id: "sco", fifaId: "43967", name: "Scotland", countryCode: "SCO", fifaRank: 43, fifaPoints: 1498.35, confederation: "UEFA" },
   { id: "tun", fifaId: "43888", name: "Tunisia", countryCode: "TUN", fifaRank: 44, fifaPoints: 1483.05, confederation: "CAF" },

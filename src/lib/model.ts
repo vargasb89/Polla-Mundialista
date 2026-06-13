@@ -28,6 +28,8 @@ const recencyWeight = (playedAt: string) => {
 
 const rankingDelta = (home: Team, away: Team) => away.fifaRank - home.fifaRank;
 
+const teamKey = (team: Team) => (team.countryCode ?? team.name ?? team.id).toLowerCase();
+
 const estimatedFifaPoints = (team: Team) => team.fifaPoints ?? clamp(1820 - team.fifaRank * 7.2, 900, 1900);
 
 const matchupEdge = (home: Team, away: Team) => {
@@ -54,8 +56,10 @@ const buildStrengths = (matches: MatchResult[]) => {
 
   for (const match of matches) {
     const weight = recencyWeight(match.playedAt);
-    const home = raw.get(match.homeTeam.id) ?? { scored: 0, conceded: 0, weight: 0, games: 0 };
-    const away = raw.get(match.awayTeam.id) ?? { scored: 0, conceded: 0, weight: 0, games: 0 };
+    const homeId = teamKey(match.homeTeam);
+    const awayId = teamKey(match.awayTeam);
+    const home = raw.get(homeId) ?? { scored: 0, conceded: 0, weight: 0, games: 0 };
+    const away = raw.get(awayId) ?? { scored: 0, conceded: 0, weight: 0, games: 0 };
 
     home.scored += match.homeGoals * weight;
     home.conceded += match.awayGoals * weight;
@@ -67,8 +71,8 @@ const buildStrengths = (matches: MatchResult[]) => {
     away.weight += weight;
     away.games += 1;
 
-    raw.set(match.homeTeam.id, home);
-    raw.set(match.awayTeam.id, away);
+    raw.set(homeId, home);
+    raw.set(awayId, away);
   }
 
   const strengths = new Map<string, TeamStrength>();
@@ -134,8 +138,8 @@ const scoreMatrix = (expectedHomeGoals: number, expectedAwayGoals: number) => {
 
 export function predictScore(homeTeam: Team, awayTeam: Team, historicalMatches: MatchResult[]): Prediction {
   const strengths = buildStrengths(historicalMatches);
-  const homeStrength = strengths.get(homeTeam.id) ?? { attack: 0, defense: 0, games: 0 };
-  const awayStrength = strengths.get(awayTeam.id) ?? { attack: 0, defense: 0, games: 0 };
+  const homeStrength = strengths.get(teamKey(homeTeam)) ?? { attack: 0, defense: 0, games: 0 };
+  const awayStrength = strengths.get(teamKey(awayTeam)) ?? { attack: 0, defense: 0, games: 0 };
   const homeProfile = teamProfile(homeTeam);
   const awayProfile = teamProfile(awayTeam);
   const edge = matchupEdge(homeTeam, awayTeam);

@@ -77,14 +77,22 @@ Resultado esperado actualmente:
 - `GET /api/health`: estado de credenciales.
 - `GET /api/fifa/fixtures`: fixtures oficiales FIFA 2026 con ranking FIFA actualizado.
 - `POST /api/predict`: predicción para dos equipos demo.
-- `GET /api/fixtures`: fixtures desde Neon con predicción.
+- `GET /api/fixtures`: fixtures desde Neon con predicción usando históricos importados.
 - `POST /api/import/world-cup`: importa fixtures del Mundial 2026 desde API-FootBALL y los guarda en Neon si `DATABASE_URL` existe.
+
+## Históricos API-FootBALL
+
+Después de sincronizar equipos y fixtures, importa los últimos partidos finalizados de las selecciones cargadas:
+
+```bash
+npm run history:import
+```
+
+Esto llena `historical_matches` con resultados internacionales, ranking FIFA, puntos FIFA y códigos de selección. El predictor usa esos históricos para calcular todos los fixtures confirmados; si no hay históricos, cae a la muestra demo.
 
 ## Siguiente fase del modelo
 
-La versión actual es transparente y funciona con datos demo. El siguiente paso es reemplazar los datos demo por:
+La versión actual ya usa históricos reales importados. El siguiente paso es mejorar la calibración con:
 
 - rankings FIFA versionados por fecha;
-- resultados históricos internacionales por selección;
-- fixtures reales del Mundial 2026;
 - calibración con backtesting: exact score, outcome y puntos esperados según las reglas de tu Polla.

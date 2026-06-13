@@ -2,8 +2,8 @@
 
 import { BarChart3, Database, Gauge, Goal, RefreshCw, Shield, Trophy } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { demoFixtures, demoResults, demoTeams } from "@/lib/demo-data";
-import { formatPercent, predictScore } from "@/lib/model";
+import { demoFixtures, demoTeams } from "@/lib/demo-data";
+import { formatPercent } from "@/lib/model";
 import type { Prediction, Team } from "@/lib/types";
 
 type AppFixture = {
@@ -136,7 +136,8 @@ function FixtureRow({
   stage,
   group,
   playedAt,
-  venue
+  venue,
+  prediction
 }: {
   homeTeam: Team;
   awayTeam: Team;
@@ -144,9 +145,8 @@ function FixtureRow({
   group?: string;
   playedAt: string;
   venue?: string;
+  prediction: Prediction | null;
 }) {
-  const prediction = predictScore(homeTeam, awayTeam, demoResults);
-
   return (
     <tr>
       <td>
@@ -159,9 +159,13 @@ function FixtureRow({
         {venue ? <span className="venue">{venue}</span> : null}
       </td>
       <td>
-        {prediction.mostLikelyScore.homeGoals}-{prediction.mostLikelyScore.awayGoals}
+        {prediction ? `${prediction.mostLikelyScore.homeGoals}-${prediction.mostLikelyScore.awayGoals}` : "TBD"}
       </td>
-      <td>{formatPercent(Math.max(prediction.homeWinProbability, prediction.drawProbability, prediction.awayWinProbability))}</td>
+      <td>
+        {prediction
+          ? formatPercent(Math.max(prediction.homeWinProbability, prediction.drawProbability, prediction.awayWinProbability))
+          : "-"}
+      </td>
     </tr>
   );
 }
@@ -170,7 +174,7 @@ export default function Home() {
   const [fixtures, setFixtures] = useState<AppFixture[]>(() =>
     demoFixtures.map((fixture) => ({
       ...fixture,
-      prediction: predictScore(fixture.homeTeam, fixture.awayTeam, demoResults)
+      prediction: null
     }))
   );
   const [homeTeamId, setHomeTeamId] = useState("fifa-43911");
@@ -182,7 +186,7 @@ export default function Home() {
     const response = await fetch("/api/fixtures", { cache: "no-store" });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error ?? "No se pudieron cargar fixtures.");
-    return payload as { mode: string; fixtures: AppFixture[] };
+    return payload as { mode: string; fixtures: AppFixture[]; historyCount?: number; historySource?: string };
   }
 
   async function loadFixtures() {
@@ -190,7 +194,7 @@ export default function Home() {
     setFixtures(payload.fixtures);
     setSyncMessage(
       payload.mode === "neon"
-        ? `Neon activo: ${payload.fixtures.length} fixtures FIFA cargados.`
+        ? `Neon activo: ${payload.fixtures.length} fixtures FIFA y ${payload.historyCount ?? 0} históricos cargados.`
         : "Modo demo activo."
     );
   }
@@ -205,7 +209,7 @@ export default function Home() {
         setFixtures(payload.fixtures);
         setSyncMessage(
           payload.mode === "neon"
-            ? `Neon activo: ${payload.fixtures.length} fixtures FIFA cargados.`
+            ? `Neon activo: ${payload.fixtures.length} fixtures FIFA y ${payload.historyCount ?? 0} históricos cargados.`
             : "Modo demo activo."
         );
       } catch (error) {
@@ -244,10 +248,15 @@ export default function Home() {
       : teams.find((team) => team.id !== selectedHomeTeamId)?.id;
 
   const prediction = useMemo(() => {
-    const homeTeam = teams.find((team) => team.id === selectedHomeTeamId) ?? teams[0] ?? demoTeams[0];
-    const awayTeam = teams.find((team) => team.id === selectedAwayTeamId) ?? teams[1] ?? demoTeams[1];
-    return predictScore(homeTeam, awayTeam, demoResults);
-  }, [selectedAwayTeamId, selectedHomeTeamId, teams]);
+    const directFixture = fixtures.find(
+      (fixture) => fixture.homeTeam.id === selectedHomeTeamId && fixture.awayTeam.id === selectedAwayTeamId
+    );
+    const reverseFixture = fixtures.find(
+      (fixture) => fixture.homeTeam.id === selectedAwayTeamId && fixture.awayTeam.id === selectedHomeTeamId
+    );
+
+    return directFixture?.prediction ?? reverseFixture?.prediction ?? fixtures.find((fixture) => fixture.prediction)?.prediction;
+  }, [fixtures, selectedAwayTeamId, selectedHomeTeamId]);
 
   async function syncWorldCup() {
     setIsSyncing(true);
@@ -351,7 +360,7 @@ export default function Home() {
           <p className="sync-status">{syncMessage}</p>
         </section>
 
-        <PredictionPanel prediction={prediction} />
+        {prediction ? <PredictionPanel prediction={prediction} /> : null}
       </section>
 
       <section className="table-section">

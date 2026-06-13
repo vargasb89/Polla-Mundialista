@@ -67,6 +67,30 @@ async function main() {
   )
 `;
 
+  await sql`
+  create table if not exists historical_matches (
+    id bigserial primary key,
+    source text not null default 'api_football',
+    api_fixture_id integer not null,
+    played_at timestamptz not null,
+    competition text,
+    home_api_team_id integer,
+    away_api_team_id integer,
+    home_team_name text not null,
+    away_team_name text not null,
+    home_code text,
+    away_code text,
+    home_fifa_rank integer,
+    away_fifa_rank integer,
+    home_fifa_points numeric,
+    away_fifa_points numeric,
+    home_goals integer not null,
+    away_goals integer not null,
+    status text,
+    updated_at timestamptz not null default now()
+  )
+`;
+
   await sql`alter table teams add column if not exists source text not null default 'api_football'`;
   await sql`alter table fixtures add column if not exists source text not null default 'api_football'`;
 
@@ -136,6 +160,7 @@ async function main() {
 
   await sql`create unique index if not exists teams_source_api_team_id_key on teams (source, api_team_id)`;
   await sql`create unique index if not exists fixtures_source_api_fixture_id_key on fixtures (source, api_fixture_id)`;
+  await sql`create unique index if not exists historical_matches_source_api_fixture_id_key on historical_matches (source, api_fixture_id)`;
 
   console.log("Base Neon lista.");
 }
